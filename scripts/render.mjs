@@ -1,4 +1,4 @@
-// Renders the profile cards (shadcn / Vercel look) from live GitHub data. Run: GITHUB_TOKEN=... node scripts/render.mjs
+// Renders the profile cards (Manrope + JetBrains Mono, monochrome) from live GitHub data. Run: GITHUB_TOKEN=... node scripts/render.mjs
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const LOGIN = 'j5nya';
@@ -13,39 +13,42 @@ const STACK = [
 const PROJECTS = ['SoneroFpsUnlocker', 'ECBootstraper'];
 
 const W = 880, HALF = 434;
-const ICONS = JSON.parse(readFileSync('scripts/icons.json', 'utf8'));
+const { brand: BRAND, lucide: LUC } = JSON.parse(readFileSync('scripts/icons.json', 'utf8'));
+const BG = m => readFileSync(`scripts/scene/bg-${m}.png`).toString('base64');
 const font = f => readFileSync(`scripts/fonts/${f}`).toString('base64');
-const SANS = font('Geist-Variable.woff2'), MONO = font('GeistMono-Variable.woff2');
+const SANS = font('Manrope-Variable.woff2'), MONO = font('JetBrainsMono-Variable.woff2');
 
 const THEMES = {
-  light: { bg: '#ffffff', fg: '#09090b', muted: '#71717a', border: '#e4e4e7', secondary: '#f4f4f5', heat: ['#f4f4f5', '#d4d4d8', '#a1a1aa', '#52525b', '#18181b'], bars: ['#18181b', '#52525b', '#a1a1aa', '#d4d4d8', '#e4e4e7'] },
-  dark: { bg: '#09090b', fg: '#fafafa', muted: '#a1a1aa', border: '#27272a', secondary: '#18181b', heat: ['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#fafafa'], bars: ['#fafafa', '#a1a1aa', '#71717a', '#3f3f46', '#27272a'] },
+  light: { mode: 'light', bg: '#f5f5f6', fg: '#09090b', muted: '#71717a', border: '#e4e4e7', secondary: '#ffffff', heat: ['#e6e6e9', '#d4d4d8', '#a1a1aa', '#52525b', '#18181b'], bars: ['#18181b', '#52525b', '#a1a1aa', '#d4d4d8', '#e4e4e7'] },
+  dark: { mode: 'dark', bg: '#18181b', fg: '#fafafa', muted: '#a1a1aa', border: '#27272a', secondary: '#27272a', heat: ['#27272a', '#3f3f46', '#71717a', '#a1a1aa', '#fafafa'], bars: ['#fafafa', '#a1a1aa', '#71717a', '#3f3f46', '#27272a'] },
 };
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-// shortcut: average glyph width instead of real metrics, fine for short labels in Geist
+// shortcut: average glyph width instead of real metrics, fine for short labels in Manrope
 const textW = (s, size, mono = false) => [...s].reduce((w, c) => w + (/[　-鿿]/.test(c) ? 1 : mono ? 0.6 : /[ilj.,·|:']/.test(c) ? 0.3 : /[A-Z#mwMW]/.test(c) ? 0.68 : 0.55), 0) * size;
 const fmt = n => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
 
-function svg(w, h, t, body) {
+function svg(w, h, t, body, bare = false) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none">
 <style>
-@font-face{font-family:G;src:url(data:font/woff2;base64,${SANS}) format("woff2");font-weight:100 900}
+@font-face{font-family:G;src:url(data:font/woff2;base64,${SANS}) format("woff2");font-weight:200 800}
 @font-face{font-family:GM;src:url(data:font/woff2;base64,${MONO}) format("woff2");font-weight:100 900}
 text{font-family:G,-apple-system,"Segoe UI",sans-serif;fill:${t.fg}}
 .m{font-family:GM,ui-monospace,Consolas,monospace}.mu{fill:${t.muted}}
-.a{opacity:0;animation:a .6s cubic-bezier(.2,.8,.2,1) forwards}
+${process.env.NOANIM ? '' : '.a{opacity:0;animation:a .6s cubic-bezier(.2,.8,.2,1) forwards}'}
 @keyframes a{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.a{animation:none;opacity:1}}
 </style>
-<rect x=".5" y=".5" width="${w - 1}" height="${h - 1}" rx="12" fill="${t.bg}" stroke="${t.border}"/>
+${bare ? '' : `<rect x=".5" y=".5" width="${w - 1}" height="${h - 1}" rx="12" fill="${t.bg}"/>`}
 ${body}
 </svg>`;
 }
-const title = (t, s, x = 24, y = 36) => `<text x="${x}" y="${y}" font-size="14" font-weight="600" class="a">${esc(s)}</text>`;
+const lu = (name, x, y, size, color, sw = 1.5) => `<g transform="translate(${x} ${y}) scale(${size / 24})" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${LUC[name]}</g>`;
+const tile = (t, name, x, y) => lu(name, x, y + 6, 16, t.fg);
+const title = (t, s, icon, x = 24, y = 22) => `<g class="a">${tile(t, icon, x, y)}<text x="${x + 26}" y="${y + 19}" font-size="15" font-weight="600" letter-spacing="-.2">${esc(s)}</text></g>`;
 const badge = (t, label, x, y, mono = true) => {
   const w = textW(label, 12, mono) + 18;
-  return [`<g class="a"><rect x="${x}" y="${y}" width="${w}" height="24" rx="6" fill="${t.secondary}" stroke="${t.border}"/><text x="${x + 9}" y="${y + 16}" font-size="12" font-weight="500"${mono ? ' class="m"' : ''}>${esc(label)}</text></g>`, w];
+  return [`<g class="a"><rect x="${x}" y="${y}" width="${w}" height="24" rx="6" fill="${t.secondary}" fill-opacity=".85"/><text x="${x + 9}" y="${y + 16}" font-size="12" font-weight="500"${mono ? ' class="m"' : ''}>${esc(label)}</text></g>`, w];
 };
 
 async function gql(query, variables) {
@@ -90,95 +93,92 @@ const topLangs = Object.entries(langs).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
 // ---- cards
 function hero(t) {
-  const H = 200, cx = 24 + 60, cy = H / 2;
-  let x = 172, chips = '';
-  for (const tag of TAGS) { const [s, w] = badge(t, tag, x, 132); chips += s; x += w + 8; }
-  const kw = textW(KANJI, 13) + 16;
+  const H = 280, cx = 32 + 64, cy = 116;
+  let x = 32, chips = '';
+  for (const tag of TAGS) { const [c, w] = badge(t, tag, x, 220); chips += c; x += w + 8; }
   return svg(W, H, t, `
-<defs><clipPath id="av"><circle cx="${cx}" cy="${cy}" r="60"/></clipPath></defs>
-<g class="a"><image href="${avatarUri}" x="${cx - 60}" y="${cy - 60}" width="120" height="120" clip-path="url(#av)" preserveAspectRatio="xMidYMid slice"/>
-<circle cx="${cx}" cy="${cy}" r="60.5" stroke="${t.border}"/></g>
-<g class="a" style="animation-delay:.05s"><text x="172" y="78" font-size="36" font-weight="600" letter-spacing="-1.2">${esc(NAME)}</text>
-<text x="${174 + textW(NAME, 36) - 1.2 * NAME.length + 12}" y="78" font-size="14" class="m mu">@${LOGIN}</text></g>
-<text x="172" y="108" font-size="15" class="mu a" style="animation-delay:.1s">${esc(SUBTITLE)}</text>
-<g style="animation-delay:.15s">${chips}</g>
-<g class="a"><rect x="${W - 24 - kw}" y="24" width="${kw}" height="24" rx="6" stroke="${t.border}"/><text x="${W - 24 - kw / 2}" y="41" font-size="13" text-anchor="middle" class="mu">${KANJI}</text></g>`);
+<defs><clipPath id="card"><rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="11.5"/></clipPath><clipPath id="av"><circle cx="${cx}" cy="${cy}" r="56"/></clipPath>
+<linearGradient id="fade" x1="0" x2="1"><stop offset="0" stop-color="${t.bg}"/><stop offset=".38" stop-color="${t.bg}" stop-opacity=".9"/><stop offset=".62" stop-color="${t.bg}" stop-opacity="0"/></linearGradient></defs>
+<g clip-path="url(#card)"><image href="data:image/png;base64,${BG(t.mode)}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/><rect width="${W}" height="${H}" fill="url(#fade)"/></g>
+<g class="a"><circle cx="${cx}" cy="${cy}" r="60" fill="${t.bg}"/><image href="${avatarUri}" x="${cx - 56}" y="${cy - 56}" width="112" height="112" clip-path="url(#av)" preserveAspectRatio="xMidYMid slice"/></g>
+<g class="a" style="animation-delay:.05s"><rect x="${cx + 30}" y="${cy + 36}" width="22" height="22" rx="11" fill="${t.bg}"/><circle cx="${cx + 41}" cy="${cy + 47}" r="5" fill="#22c55e"/></g>
+<g class="a" style="animation-delay:.08s"><text x="180" y="104" font-size="40" font-weight="650" letter-spacing="-1.6">${esc(NAME)}</text>
+<text x="182" y="134" font-size="14" class="m mu">@${LOGIN}</text></g>
+<g class="a" style="animation-delay:.12s">${lu('terminal', 182, 150, 15, t.muted)}<text x="204" y="162" font-size="14" class="mu">${esc(SUBTITLE)}</text></g>
+<g style="animation-delay:.16s">${chips}</g>`, true);
 }
 
 function stack(t) {
-  const H = 64 + STACK.length * 44;
-  let body = title(t, 'Stack');
+  const H = 78 + STACK.length * 92;
+  let body = title(t, 'Stack', 'layers');
   STACK.forEach(([group, items], gi) => {
-    const y = 60 + gi * 44;
-    body += `<text x="24" y="${y + 21}" font-size="13" class="mu a">${esc(group)}</text>`;
-    let x = 104;
+    const y = 76 + gi * 92, cw = (W - 48 - 88) / items.length;
+    body += `<g class="a">${lu(gi ? 'wrench' : 'code-xml', 24, y + 30, 14, t.muted)}<text x="44" y="${y + 41}" font-size="13" class="mu">${esc(group)}</text></g>`;
     items.forEach(([icon, label], ii) => {
-      const w = textW(label, 13) + 46;
-      body += `<g class="a" style="animation-delay:${(gi * 5 + ii) * 0.03}s"><rect x="${x}" y="${y}" width="${w}" height="32" rx="8" stroke="${t.border}"/>
-<g transform="translate(${x + 12} ${y + 9}) scale(.5833)"><path d="${ICONS[icon]}" fill="${t.fg}"/></g>
-<text x="${x + 34}" y="${y + 21}" font-size="13" font-weight="500">${esc(label)}</text></g>`;
-      x += w + 8;
+      const x = 112 + ii * cw, c = t.fg;
+      body += `<g class="a" style="animation-delay:${(gi * 5 + ii) * 0.04}s">
+<rect x="${x}" y="${y}" width="${cw - 10}" height="76" rx="10" fill="${t.secondary}"/>
+<g transform="translate(${x + (cw - 10) / 2 - 10} ${y + 16}) scale(.8333)"><path d="${BRAND[icon].d}" fill="${c}"/></g>
+<text x="${x + (cw - 10) / 2}" y="${y + 64}" font-size="12" font-weight="500" text-anchor="middle">${esc(label)}</text></g>`;
     });
   });
   return svg(W, H, t, body);
 }
 
 function project(t, r) {
-  const H = 132, desc = r.description || 'No description';
+  const H = 136, desc = r.description || 'No description';
   const short = desc.length > 52 ? desc.slice(0, 50) + '…' : desc;
   const lang = r.primaryLanguage?.name;
   return svg(HALF, H, t, `
-<g class="a"><path transform="translate(24 22) scale(1)" d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.25.25 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" fill="${t.muted}"/>
-<text x="48" y="35" font-size="15" font-weight="600">${esc(r.name)}</text></g>
-<text x="24" y="66" font-size="13" class="mu a" style="animation-delay:.05s">${esc(short)}</text>
+<g class="a">${tile(t, 'book-marked', 24, 22)}
+<text x="50" y="41" font-size="15" font-weight="600" letter-spacing="-.2">${esc(r.name)}</text>${lu('sparkles', HALF - 40, 28, 16, t.muted)}</g>
+<text x="24" y="78" font-size="13" class="mu a" style="animation-delay:.05s">${esc(short)}</text>
 <g class="a" style="animation-delay:.1s" font-size="12">
-${lang ? `<circle cx="29" cy="102" r="5" fill="${t.fg}"/><text x="40" y="106" class="mu">${esc(lang)}</text>` : ''}
-<text x="${lang ? 52 + textW(lang, 12) : 24}" y="106" class="mu">★ ${fmt(r.stargazerCount)}</text></g>`);
+${lang ? `${lu('code-xml', 24, 98, 14, t.muted)}<text x="44" y="110" class="mu">${esc(lang)}</text>` : ''}
+${(() => { const sx = lang ? 60 + textW(lang, 12) : 24; return `${lu('star', sx, 98, 14, t.muted)}<text x="${sx + 20}" y="110" class="mu">${fmt(r.stargazerCount)}</text>${lu('git-fork', sx + 44, 98, 14, t.muted)}<text x="${sx + 64}" y="110" class="mu">${fmt(r.forkCount)}</text>`; })()}</g>`);
 }
 
 function stats(t) {
-  const H = 262, metrics = [['Stars', stars], ['Contributions', cal.totalContributions], ['Repositories', data.repositories.totalCount], ['Followers', data.followers.totalCount]];
+  const H = 290, metrics = [['Stars', stars, 'star'], ['Contributions', cal.totalContributions, 'git-commit-horizontal'], ['Repositories', data.repositories.totalCount, 'folder-git-2'], ['Followers', data.followers.totalCount, 'users']];
   const colW = (W - 48) / 4;
-  let body = title(t, 'Activity') + `<text x="${W - 24}" y="36" font-size="12" text-anchor="end" class="mu a">last 12 months</text>`;
-  metrics.forEach(([label, v], i) => {
-    const x = 24 + i * colW;
-    if (i) body += `<line x1="${x}" y1="60" x2="${x}" y2="112" stroke="${t.border}"/>`;
-    body += `<g class="a" style="animation-delay:${i * 0.05}s"><text x="${x + (i ? 16 : 0)}" y="76" font-size="12" class="mu">${label}</text><text x="${x + (i ? 16 : 0)}" y="106" font-size="26" font-weight="600" letter-spacing="-.6">${fmt(v)}</text></g>`;
+  let body = title(t, 'Activity', 'activity') + `<g class="a">${lu('calendar-days', W - 128, 29, 14, t.muted)}<text x="${W - 24}" y="41" font-size="12" text-anchor="end" class="mu">last 12 months</text></g>`;
+  metrics.forEach(([label, v, icon], i) => {
+    const x = 24 + i * colW, px = x;
+    body += `<g class="a" style="animation-delay:${i * 0.05}s">${lu(icon, px, 77, 14, t.muted)}<text x="${px + 20}" y="89" font-size="12" class="mu">${label}</text><text x="${px}" y="126" font-size="28" font-weight="650" letter-spacing="-.8">${fmt(v)}</text></g>`;
   });
-  body += `<line x1="24" y1="132" x2="${W - 24}" y2="132" stroke="${t.border}"/>`;
   const weeks = cal.weeks.slice(-53), cell = 11, gap = 4.5;
   const gx = (W - (weeks.length * (cell + gap) - gap)) / 2;
   body += '<g class="a" style="animation-delay:.15s">';
   weeks.forEach((w, wi) => w.contributionDays.forEach(d => {
     const dow = new Date(d.date + 'T00:00:00Z').getUTCDay();
-    body += `<rect x="${(gx + wi * (cell + gap)).toFixed(1)}" y="${(148 + dow * (cell + 2.5)).toFixed(1)}" width="${cell}" height="${cell}" rx="2.5" fill="${t.heat[LEVEL[d.contributionLevel]]}"/>`;
+    body += `<rect x="${(gx + wi * (cell + gap)).toFixed(1)}" y="${(176 + dow * (cell + 2.5)).toFixed(1)}" width="${cell}" height="${cell}" rx="2.5" fill="${t.heat[LEVEL[d.contributionLevel]]}"/>`;
   }));
   return svg(W, H, t, body + '</g>');
 }
 
 function languages(t) {
-  const H = 156;
-  let body = title(t, 'Languages'), x = 24;
+  const H = 176;
+  let body = title(t, 'Languages', 'languages'), x = 24;
   const barW = HALF - 48;
-  body += `<clipPath id="bar"><rect x="24" y="56" width="${barW}" height="8" rx="4"/></clipPath><g clip-path="url(#bar)" class="a">`;
-  topLangs.forEach(([, size], i) => { const w = size / langTotal * barW; body += `<rect x="${x}" y="56" width="${w + 0.5}" height="8" fill="${t.bars[i]}"/>`; x += w; });
-  body += `<rect x="${x}" y="56" width="${24 + barW - x}" height="8" fill="${t.bars[4]}"/></g>`;
+  body += `<clipPath id="bar"><rect x="24" y="72" width="${barW}" height="8" rx="4"/></clipPath><g clip-path="url(#bar)" class="a">`;
+  topLangs.forEach(([, size], i) => { const w = size / langTotal * barW; body += `<rect x="${x}" y="72" width="${w + 0.5}" height="8" fill="${t.bars[i]}"/>`; x += w; });
+  body += `<rect x="${x}" y="72" width="${24 + barW - x}" height="8" fill="${t.bars[4]}"/></g>`;
   topLangs.slice(0, 4).forEach(([name, size], i) => {
-    const cx = 24 + (i % 2) * (barW / 2), cy = 96 + Math.floor(i / 2) * 28;
-    body += `<g class="a" style="animation-delay:${0.05 + i * 0.04}s"><circle cx="${cx + 4}" cy="${cy - 4}" r="4" fill="${t.bars[i]}" stroke="${t.border}"/><text x="${cx + 16}" y="${cy}" font-size="13" font-weight="500">${esc(name)}</text><text x="${cx + barW / 2 - 12}" y="${cy}" font-size="12" text-anchor="end" class="m mu">${(size / langTotal * 100).toFixed(1)}%</text></g>`;
+    const cx = 24 + (i % 2) * (barW / 2), cy = 114 + Math.floor(i / 2) * 28;
+    body += `<g class="a" style="animation-delay:${0.05 + i * 0.04}s"><circle cx="${cx + 4}" cy="${cy - 4}" r="4" fill="${t.bars[i]}"/><text x="${cx + 16}" y="${cy}" font-size="13" font-weight="500">${esc(name)}</text><text x="${cx + barW / 2 - 12}" y="${cy}" font-size="12" text-anchor="end" class="m mu">${(size / langTotal * 100).toFixed(1)}%</text></g>`;
   });
   return svg(HALF, H, t, body);
 }
 
 function streakCard(t) {
-  const H = 156, last = days.slice(-14);
-  let body = title(t, 'Streak');
-  [['Current', streak.current], ['Longest', streak.longest]].forEach(([label, v], i) => {
+  const H = 176, last = days.slice(-14);
+  let body = title(t, 'Streak', 'flame');
+  [['Current', streak.current, 'flame'], ['Longest', streak.longest, 'trophy']].forEach(([label, v, icon], i) => {
     const x = 24 + i * 150;
-    body += `<g class="a" style="animation-delay:${i * 0.05}s"><text x="${x}" y="70" font-size="12" class="mu">${label}</text><text x="${x}" y="102" font-size="26" font-weight="600" letter-spacing="-.6">${v}<tspan font-size="13" font-weight="400" class="mu" dx="6">days</tspan></text></g>`;
+    body += `<g class="a" style="animation-delay:${i * 0.05}s">${lu(icon, x, 72, 14, t.muted)}<text x="${x + 20}" y="84" font-size="12" class="mu">${label}</text><text x="${x}" y="118" font-size="26" font-weight="600" letter-spacing="-.6">${v}<tspan font-size="13" font-weight="400" class="mu" dx="6">days</tspan></text></g>`;
   });
   const cw = (HALF - 48 - 13 * 4) / 14;
-  last.forEach((d, i) => { body += `<rect class="a" style="animation-delay:${0.1 + i * 0.02}s" x="${(24 + i * (cw + 4)).toFixed(1)}" y="128" width="${cw.toFixed(1)}" height="18" rx="4" fill="${t.heat[LEVEL[d.contributionLevel]]}" stroke="${t.border}"/>`; });
+  last.forEach((d, i) => { body += `<rect class="a" style="animation-delay:${0.1 + i * 0.02}s" x="${(24 + i * (cw + 4)).toFixed(1)}" y="138" width="${cw.toFixed(1)}" height="18" rx="4" fill="${t.heat[LEVEL[d.contributionLevel]]}"/>`; });
   return svg(HALF, H, t, body);
 }
 

@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}canvas{display:block}</style></head><body>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+const dark = location.hash === '#dark';
+const W = 1760, H = 560;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = dark ? 0.9 : 1.05;
+document.body.appendChild(r.domElement);
+const bg = dark ? 0x18181b : 0xf5f5f6;
+const s = new THREE.Scene(); s.background = new THREE.Color(bg);
+s.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+s.environmentIntensity = dark ? 0.35 : 0.9;
+const asp = W / H, vh = 7.6;
+const cam = new THREE.OrthographicCamera(-vh * asp / 2, vh * asp / 2, vh / 2, -vh / 2, 0.1, 200);
+cam.position.set(4.5 + 7, 15, 0.5 + 22); cam.lookAt(4.5, 0, 0.5);
+const sun = new THREE.DirectionalLight(0xffffff, dark ? 2.2 : 2.4); sun.position.set(-8, 14, 9); sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096); sun.shadow.radius = 8; sun.shadow.blurSamples = 25; sun.shadow.bias = -0.0004;
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 14, bottom: -14, far: 80 }); s.add(sun);
+if (dark) { const rim = new THREE.DirectionalLight(0xa1a1aa, 1.4); rim.position.set(10, 5, -8); s.add(rim); }
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.ShadowMaterial({ opacity: dark ? 0.7 : 0.18 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; s.add(ground);
+const mat = c => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.35 });
+const tiers = dark ? [0x27272a, 0x52525b, 0x71717a, 0xa1a1aa, 0xe4e4e7] : [0xf4f4f5, 0xe4e4e7, 0xd4d4d8, 0x71717a, 0x27272a];
+const red = new THREE.MeshPhysicalMaterial({ color: 0xc8372d, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.12 });
+const add = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; s.add(o); return o; };
+const weeks = await (await fetch('contrib.json')).json();
+const max = Math.max(1, ...weeks.flat().map(d => d[1])), step = 0.62, size = 0.5;
+weeks.forEach((w, wi) => w.forEach(([dow, n]) => {
+  const k = n ? Math.sqrt(n / max) : 0, h = 0.08 + k * 3.2;
+  const tier = n ? Math.min(4, 1 + Math.floor(k * 4)) : 0;
+  add(new RoundedBoxGeometry(size, h, size, 3, Math.min(0.08, h / 2.2)), mat(tiers[tier]), (wi - weeks.length / 2) * step, h / 2, (dow - 3) * step);
+}));
+cam.updateMatrixWorld(); const sp = new THREE.Vector3(0.84, 0.52, 0.3).unproject(cam); // pin the sun to the upper-right of the frame
+add(new THREE.SphereGeometry(0.75, 96, 64), red, sp.x, sp.y, sp.z).castShadow = false;
+r.render(s, cam);
+document.title = 'done';
+</script></body></html>

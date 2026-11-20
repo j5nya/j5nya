@@ -31,8 +31,4 @@
   <img height="165" src="https://github-readme-stats.vercel.app/api/top-langs/?username=j5nya&layout=compact&hide_border=true&bg_color=0d1117&title_color=a78bfa&text_color=c9d1d9&langs_count=6" />
 </p>
 
-<p align="center">
-  <img src="https://github-readme-activity-graph.vercel.app/graph?username=j5nya&bg_color=0d1117&color=a78bfa&line=6d28d9&point=e9d5ff&area=true&area_color=6d28d9&hide_border=true" width="100%"/>
-</p>
-
 <img src="https://capsule-render.vercel.app/api?type=waving&height=110&section=footer&color=0:6d28d9,50:1f1147,100:0d1117" width="100%"/>

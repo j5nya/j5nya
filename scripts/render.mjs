@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 const LOGIN = 'j5nya';
 const NAME = 'watanabe';
 const KANJI = '渡辺';
-const SUBTITLE = 'reverse engineering · ghidra · ida · intellij idea · unix';
+const SUBTITLE = 'reverse engineering · unix';
 const TAGS = ['C#', 'Java', 'C', 'Luau', 'TypeScript'];
 const STACK = [ // brand slug from Simple Icons, or lucide:<name> where no logo exists (Ghidra, IDA, Unix)
   ['Main', [['dotnet', 'C#'], ['openjdk', 'Java'], ['c', 'C'], ['lua', 'Luau'], ['typescript', 'TypeScript']]],

@@ -4,11 +4,12 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 const LOGIN = 'j5nya';
 const NAME = 'watanabe';
 const KANJI = '渡辺';
-const SUBTITLE = 'reverse engineering · game clients · roblox revivals';
+const SUBTITLE = 'reverse engineering · ghidra · ida · intellij idea · unix';
 const TAGS = ['C#', 'Java', 'C', 'Luau', 'TypeScript'];
-const STACK = [
+const STACK = [ // brand slug from Simple Icons, or lucide:<name> where no logo exists (Ghidra, IDA, Unix)
   ['Main', [['dotnet', 'C#'], ['openjdk', 'Java'], ['c', 'C'], ['lua', 'Luau'], ['typescript', 'TypeScript']]],
-  ['Tools', [['git', 'Git'], ['linux', 'Linux'], ['postgresql', 'PostgreSQL'], ['roblox', 'Roblox'], ['intellijidea', 'IntelliJ']]],
+  ['Reverse', [['lucide:binary', 'Ghidra'], ['lucide:cpu', 'IDA'], ['intellijidea', 'IntelliJ IDEA']]],
+  ['System', [['linux', 'Linux'], ['lucide:square-terminal', 'Unix'], ['gnubash', 'Bash'], ['git', 'Git'], ['postgresql', 'PostgreSQL']]],
 ];
 const PROJECTS = ['SoneroFpsUnlocker', 'ECBootstraper'];
 
@@ -112,13 +113,13 @@ function stack(t) {
   const H = 78 + STACK.length * 92;
   let body = title(t, 'Stack', 'layers');
   STACK.forEach(([group, items], gi) => {
-    const y = 76 + gi * 92, cw = (W - 48 - 88) / items.length;
-    body += `<g class="a">${lu(gi ? 'wrench' : 'code-xml', 24, y + 30, 14, t.muted)}<text x="44" y="${y + 41}" font-size="13" class="mu">${esc(group)}</text></g>`;
+    const y = 76 + gi * 92, cw = (W - 48 - 88) / 5;
+    body += `<g class="a">${lu(['code-xml', 'binary', 'wrench'][gi], 24, y + 30, 14, t.muted)}<text x="44" y="${y + 41}" font-size="13" class="mu">${esc(group)}</text></g>`;
     items.forEach(([icon, label], ii) => {
       const x = 112 + ii * cw, c = t.fg;
       body += `<g class="a" style="animation-delay:${(gi * 5 + ii) * 0.04}s">
 <rect x="${x}" y="${y}" width="${cw - 10}" height="76" rx="10" fill="${t.secondary}"/>
-<g transform="translate(${x + (cw - 10) / 2 - 10} ${y + 16}) scale(.8333)"><path d="${BRAND[icon].d}" fill="${c}"/></g>
+${icon.startsWith('lucide:') ? lu(icon.slice(7), x + (cw - 10) / 2 - 10, y + 16, 20, c) : `<g transform="translate(${x + (cw - 10) / 2 - 10} ${y + 16}) scale(.8333)"><path d="${BRAND[icon].d}" fill="${c}"/></g>`}
 <text x="${x + (cw - 10) / 2}" y="${y + 64}" font-size="12" font-weight="500" text-anchor="middle">${esc(label)}</text></g>`;
     });
   });
